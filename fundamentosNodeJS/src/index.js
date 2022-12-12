@@ -1,29 +1,39 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 
+// Starting a server with express
 const app = express();
 
+// As a first NodeJS project, it doesn't have a database. So it'll use vector to store data
 const customers = [];
 
+// Server running on port 333
 app.listen(3333);
+// To use json data with express
 app.use(express.json());
 
-// Requisitos e regras de negócio no arquivo README.md
+// A middleware to verify if an account is valid
 function ifAccountIsValid(req, res, next) {
+    // Get data from header request
     const { cpf } = req.headers;
 
     const customer = customers.find((customer) => customer.cpf === cpf);
 
     if(!customer){
+        // Return a response to the request if customer doesn't exist, with status code 400 e a json message
         return res.status(400).json({error: 'Customer not found'})
     }
 
+    // To attach the customer data to request
     req.customer = customer;
 
+    // If everything is ok, go to method
     return next();
 }
 
+// A function to get balance of an account
 function getBalance(statement) {
+    // Get the statement, go through each operation and adding or subtracting
     const balance = statement.reduce((acc,operation) => {
         if(operation.type === 'credit'){
             return acc + operation.amount;
@@ -35,7 +45,9 @@ function getBalance(statement) {
     return balance;
 }
 
+// A HTTP method to create a new account
 app.post('/account', (req,res) => {
+    // Get data from body of request
     const { name, cpf } = req.body;
 
     const cpfAlreadyUsed = customers.some(customer => customer.cpf === cpf);
@@ -54,12 +66,15 @@ app.post('/account', (req,res) => {
     return res.status(201).send();
 })
 
+// A HTTP method that return the account statement
 app.get('/statement', ifAccountIsValid, (req,res) => {
+    // Get data from request
     const { customer } = req;
 
     return res.json(customer.statement);
-})
+});
 
+// A HTTP method that deposit a amount on account
 app.post('/deposit', ifAccountIsValid, (req,res) => {
     const { description, amount } = req.body;
     const { customer } = req;
@@ -74,8 +89,9 @@ app.post('/deposit', ifAccountIsValid, (req,res) => {
     customer.statement.push(statementOperation);
 
     return res.status(201).send();
-})
+});
 
+// A HTTP method that create a withdraw on account statement
 app.post('/withdraw', ifAccountIsValid, (req,res) => {
     const { customer } = req;
     const { amount } = req.body
@@ -96,6 +112,7 @@ app.post('/withdraw', ifAccountIsValid, (req,res) => {
 
     return res.status(201).send();
 })
+
 
 app.get('/statement/date', ifAccountIsValid, (req, res) => {
     const { customer } = req;
